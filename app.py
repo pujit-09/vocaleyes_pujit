@@ -19,12 +19,14 @@ from gtts import gTTS
 from PIL import Image
 
 # ----------------------------
-# OCR Tamil Model
+# OCR with Pytesseract (lighter for cloud deployment)
 # ----------------------------
-from ocr_tamil.ocr import OCR
+import pytesseract
 
-# Initialize Tamil + English OCR
-ocr_model = OCR(detect=True)
+# Configure Tesseract for Tamil + English
+def get_tesseract_config():
+    return '--oem 3 --psm 6 -l tam+eng'
+
 
 # ----------------------------
 # Flask setup
@@ -67,19 +69,14 @@ def predict_text_from_bytes(image_bytes):
         with open(temp_path, "wb") as f:
             f.write(image_bytes)
 
-        text_list = ocr_model.predict(str(temp_path))
+        # Use pytesseract for OCR
+        img = Image.open(temp_path)
+        text = pytesseract.image_to_string(img, config=get_tesseract_config())
         temp_path.unlink(missing_ok=True)
 
-        if isinstance(text_list, list):
-            if isinstance(text_list[0], list):
-                flat_text = " ".join([" ".join(t) for t in text_list])
-            else:
-                flat_text = " ".join(text_list)
-        else:
-            flat_text = str(text_list)
-        return flat_text.strip()
+        return text.strip()
     except Exception as e:
-        print("⚠️ OCR Tamil error:", e)
+        print("⚠️ OCR error:", e)
         return ""
 
 # ----------------------------
