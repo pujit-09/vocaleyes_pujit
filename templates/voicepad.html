@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VocalEyes - VoicePad</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #ff7f50, #ffcc80);
+      color: #fff;
+      text-align: center;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 50px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    header h1 { font-size: 28px; color: #fff; }
+    nav a {
+      margin-left: 20px;
+      text-decoration: none;
+      color: #fff;
+      font-weight: bold;
+    }
+    nav a:hover { text-decoration: underline; }
+    .container { margin-top: 60px; text-align: center; }
+    textarea {
+      width: 80%;
+      height: 220px;
+      font-size: 18px;
+      border-radius: 10px;
+      padding: 15px;
+      border: none;
+      resize: none;
+      outline: none;
+      color: #333;
+      background: #fff;
+    }
+    select, button {
+      margin: 10px;
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    select { background: #fff; color: #ff7f50; }
+    button { background: #fff; color: #ff7f50; }
+    button:hover, select:hover { background: #ff7f50; color: #fff; }
+    .buttons { margin-top: 20px; }
+    footer {
+      margin-top: 40px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 14px;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>VocalEyes</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/draw">Draw</a>
+      <a href="/upload-page">Upload</a>
+      <a href="/capture">Capture</a>
+      <a href="/voicepad">VoicePad</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <h2>🗣️ VoicePad – Talk or Type and Hear It!</h2>
+    <textarea id="textInput" placeholder="Type here or click 🎙️ to speak..."></textarea><br>
+
+    <div class="buttons">
+      <select id="langSelect">
+        <option value="en-IN">English (India)</option>
+        <option value="ta-IN">தமிழ் (Tamil)</option>
+        <option value="hi-IN">हिन्दी (Hindi)</option>
+        <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+        <option value="te-IN">తెలుగు (Telugu)</option>
+      </select>
+      <button id="speakBtn">🔊 Speak</button>
+      <button id="listenBtn">🎙️ Start Listening</button>
+      <button id="clearBtn">🧹 Clear</button>
+    </div>
+
+    <audio id="ttsAudio" controls style="display:none; margin-top:20px;"></audio>
+  </div>
+
+  <footer>© 2025 VocalEyes – Text & Voice Assistant</footer>
+
+  <script>
+    const textInput = document.getElementById('textInput');
+    const speakBtn = document.getElementById('speakBtn');
+    const listenBtn = document.getElementById('listenBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const langSelect = document.getElementById('langSelect');
+    const ttsAudio = document.getElementById('ttsAudio');
+
+    // 🔊 Text → Voice
+    speakBtn.addEventListener('click', async () => {
+      const text = textInput.value.trim();
+      const lang = langSelect.value;
+      if (!text) return alert("Please enter some text!");
+
+      if (lang === "en-IN") {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = lang;
+        speechSynthesis.speak(msg);
+        return;
+      }
+
+      try {
+        const res = await fetch("/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, lang })
+        });
+        const data = await res.json();
+        if (data.audio_url) {
+          ttsAudio.src = data.audio_url + "?t=" + Date.now();
+          ttsAudio.style.display = "block";
+          await ttsAudio.play();
+        } else {
+          alert("Error generating audio!");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Server error. Please try again.");
+      }
+    });
+
+    // 🧹 Clear
+   clearBtn.addEventListener('click', () => {
+  textInput.value = "";
+  ttsAudio.style.display = "none";
+  finalTranscript = ""; // ✅ also clear stored text
+});
+
+    // 🎙️ Voice → Text
+    let recognition;
+    let listening = false;
+    let finalTranscript = "";
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) finalTranscript += transcript + " ";
+          else interimTranscript += transcript;
+        }
+        textInput.value = finalTranscript + interimTranscript;
+      };
+
+      recognition.onerror = (e) => {
+        console.error("Speech recognition error:", e);
+        alert("Voice recognition error. Please try again.");
+        listenBtn.textContent = "🎙️ Start Listening";
+        listening = false;
+      };
+
+      recognition.onend = () => {
+        listenBtn.textContent = "🎙️ Start Listening";
+        listening = false;
+      };
+
+      listenBtn.addEventListener('click', () => {
+        if (!listening) {
+          recognition.lang = langSelect.value;
+          recognition.start();
+          listenBtn.textContent = "🛑 Stop Listening";
+          listening = true;
+          console.log("Listening in:", recognition.lang);
+        } else {
+          recognition.stop();
+        }
+      });
+
+    } else {
+      alert("Speech recognition not supported in this browser. Try Chrome or Edge.");
+    }
+  </script>
+</body>
+</html>

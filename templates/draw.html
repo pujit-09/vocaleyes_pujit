@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VocalEyes - Draw</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #ff7f50, #ffcc80);
+      color: #fff;
+      text-align: center;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 50px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    header h1 { font-size: 28px; color: #fff; }
+    nav a {
+      margin-left: 20px;
+      text-decoration: none;
+      color: #fff;
+      font-weight: bold;
+    }
+    nav a:hover { text-decoration: underline; }
+
+    .hero { margin-top: 60px; }
+    .hero h2 {
+      font-size: 40px;
+      text-shadow: 0 0 10px #ffcc80;
+      margin-bottom: 20px;
+    }
+
+    canvas {
+      border: 2px solid #fff;
+      background: #fff;
+      cursor: crosshair;
+      margin-top: 20px;
+      border-radius: 8px;
+    }
+
+    .btn {
+      background: #fff;
+      color: #ff7f50;
+      border: none;
+      padding: 12px 25px;
+      margin: 15px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    .btn:hover { background: #ff7f50; color: #fff; }
+
+    pre {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 10px;
+      border-radius: 6px;
+      color: #fff;
+      white-space: pre-wrap;
+      max-width: 600px;
+      margin: 20px auto;
+      text-align: left;
+    }
+
+    img { margin-top: 15px; max-width: 400px; border: 2px solid #fff; border-radius: 6px; }
+    audio { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>VocalEyes</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/draw">Draw</a>
+      <a href="/upload-page">Upload</a>
+      <a href="/capture">Capture</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <h2>✏️ Draw Something for OCR</h2>
+    <canvas id="canvas" width="650" height="450"></canvas><br>
+
+    <button class="btn" onclick="clearCanvas()">🧹 Clear</button>
+    <button class="btn" onclick="uploadCanvas()">⬆️ Upload</button>
+    <button class="btn" onclick="downloadCanvas()">💾 Download</button>
+
+    <h3>Extracted Text:</h3>
+    <pre id="result">No text detected yet.</pre>
+    <audio id="audioPlayer" controls></audio>
+    <img id="uploadedImage" />
+  </div>
+
+  <script>
+    // --- Drawing setup ---
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false, lastX = 0, lastY = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+      drawing = true;
+      [lastX, lastY] = [e.offsetX, e.offsetY];
+    });
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseleave', () => drawing = false);
+    canvas.addEventListener('mousemove', draw);
+
+    function draw(e) {
+      if (!drawing) return;
+      ctx.strokeStyle = "black";   // ✏️ black ink
+      ctx.lineWidth = 8;           // ✅ smooth, visible
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+      [lastX, lastY] = [e.offsetX, e.offsetY];
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      document.getElementById("result").textContent = "No text detected yet.";
+      document.getElementById("audioPlayer").src = "";
+      document.getElementById("uploadedImage").src = "";
+    }
+
+    async function uploadCanvas() {
+      const resultEl = document.getElementById("result");
+      const audioPlayer = document.getElementById("audioPlayer");
+      const uploadedImage = document.getElementById("uploadedImage");
+      
+      // Show loading state
+      resultEl.textContent = "Processing... Please wait.";
+      
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext("2d");
+
+      tempCtx.fillStyle = "white";
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(canvas, 0, 0);
+
+      // Convert toBlob to a Promise for proper async handling
+      const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, "image/png"));
+      
+      if (!blob) {
+        resultEl.textContent = "Error: Could not capture canvas image.";
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("file", blob, "drawing.png");
+
+        const res = await fetch("/upload", { method: "POST", body: formData });
+        
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ error: "Server error" }));
+          resultEl.textContent = "Error: " + (errorData.error || "Upload failed");
+          return;
+        }
+        
+        const data = await res.json();
+        
+        resultEl.textContent = data.extracted_text || "No text detected.";
+        audioPlayer.src = data.audio_play_url || "";
+        uploadedImage.src = data.image_url || "";
+        
+        console.log("Upload successful:", data);
+      } catch (error) {
+        console.error("Upload error:", error);
+        resultEl.textContent = "Error: " + error.message;
+      }
+    }
+
+    function downloadCanvas() {
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext("2d");
+
+      tempCtx.fillStyle = "white";
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(canvas, 0, 0);
+
+      const link = document.createElement("a");
+      link.download = "draw_capture.jpg";
+      link.href = tempCanvas.toDataURL("image/jpeg", 1.0);
+      link.click();
+    }
+
+    // Initialize canvas white
+    clearCanvas();
+  </script>
+</body>
+</html>

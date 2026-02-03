@@ -1,0 +1,10 @@
+flask
+flask-cors
+gTTS
+pillow
+opencv-python
+pytesseract
+numpy
+tensorflow
+easyocr
+torch

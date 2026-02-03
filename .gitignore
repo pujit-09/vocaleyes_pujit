@@ -1,0 +1,26 @@
+# Virtual environments
+venv/
+venv_new/
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Uploads folder (user uploads)
+uploads/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Model files (too large for git)
+*.h5
+*.pt
+*.pth

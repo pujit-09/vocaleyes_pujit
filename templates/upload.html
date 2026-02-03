@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VocalEyes - Upload</title>
+  <style>
+    body { margin:0; font-family:Arial,sans-serif; background:linear-gradient(135deg,#ff7f50,#ffcc80); color:#fff; text-align:center; }
+    header { display:flex; justify-content:space-between; align-items:center; padding:15px 50px; background:rgba(255,255,255,0.1); backdrop-filter:blur(10px);}
+    header h1 { font-size:28px; color:#fff; }
+    nav a { margin-left:20px; text-decoration:none; color:#fff; font-weight:bold; }
+    nav a:hover { text-decoration:underline; }
+    .hero { margin-top:60px; }
+    .hero h2 { font-size:40px; text-shadow:0 0 10px #ffcc80; }
+    .form-area { margin-top:30px; }
+    input[type="file"] { padding:10px; border-radius:6px; border:none; margin:10px; }
+    .btn { background:#fff; color:#ff7f50; border:none; padding:12px 25px; margin:15px; border-radius:8px; cursor:pointer; font-size:16px; font-weight:bold; transition:0.3s; }
+    .btn:hover { background:#ff7f50; color:#fff; }
+    .result { margin-top:30px; padding:20px; background:rgba(255,255,255,0.2); border-radius:8px; max-width:600px; margin-left:auto; margin-right:auto; }
+    .result p { font-size:18px; word-wrap:break-word; }
+    audio { margin-top:15px; width:100%; max-width:400px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>VocalEyes</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/draw">Draw</a>
+      <a href="/upload-page">Upload</a>
+      <a href="/capture">Capture</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <h2>Upload Image for OCR</h2>
+    <div class="form-area">
+      <form method="POST" action="/process" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <br>
+        <button type="submit" class="btn">Process</button>
+      </form>
+    </div>
+
+    {% if error %}
+      <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
+    {% if extracted_text %}
+      <div class="result">
+        <h3>Extracted Text:</h3>
+        <p>{{ extracted_text }}</p>
+
+        {% if audio_play_url %}
+          <h3>Voice Note:</h3>
+          <audio controls>
+            <source src="{{ audio_play_url }}" type="audio/mpeg">
+            Your browser does not support the audio element.
+          </audio>
+        {% endif %}
+
+        {% if audio_download_url %}
+          <a href="{{ audio_download_url }}"><button class="btn">Download Audio</button></a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

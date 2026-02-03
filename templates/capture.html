@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VocalEyes - Capture</title>
+  <style>
+    body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#ff7f50,#ffcc80);color:#fff;text-align:center;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:15px 50px;background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);}
+    header h1{font-size:28px;color:#fff;}
+    nav a{margin-left:20px;text-decoration:none;color:#fff;font-weight:bold;}
+    nav a:hover{text-decoration:underline;}
+    .hero{margin-top:50px;}
+    video,canvas{margin:20px;border:2px solid #fff;border-radius:8px;}
+    .btn{background:#fff;color:#ff7f50;border:none;padding:12px 25px;margin:10px;border-radius:8px;cursor:pointer;font-size:16px;font-weight:bold;transition:0.3s;}
+    .btn:hover{background:#ff7f50;color:#fff;}
+    pre{background:rgba(255,255,255,0.2);padding:10px;border-radius:6px;color:#fff;white-space:pre-wrap;max-width:600px;margin:20px auto;text-align:left;}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>VocalEyes</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/draw">Draw</a>
+      <a href="/upload-page">Upload</a>
+      <a href="/capture">Capture</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <h2>Capture Photo from Camera</h2>
+    <video id="video" width="400" height="300" autoplay></video>
+    <canvas id="canvas" width="400" height="300"></canvas><br>
+    <button class="btn" onclick="capture()">Capture</button>
+    <button class="btn" onclick="upload()">Upload</button>
+
+    <h3>Extracted Text:</h3>
+    <pre id="result"></pre>
+    <audio id="audioPlayer" controls></audio>
+  </div>
+
+  <script>
+    const video=document.getElementById("video"); const canvas=document.getElementById("canvas"); const ctx=canvas.getContext("2d");
+    navigator.mediaDevices.getUserMedia({video:true}).then(stream=>video.srcObject=stream).catch(err=>console.error("Camera access denied:",err));
+    function capture(){ ctx.drawImage(video,0,0,canvas.width,canvas.height); }
+    async function upload(){ const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png")); const formData=new FormData(); formData.append("file",blob,"capture.png"); const res=await fetch("/upload",{method:"POST",body:formData}); const data=await res.json(); document.getElementById("result").textContent=data.extracted_text||"No text detected."; document.getElementById("audioPlayer").src=data.audio_play_url ||""; }
+  </script>
+</body>
+</html>
+
